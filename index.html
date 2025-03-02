@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>坦克射击</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            border: none;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-size: 24px;
+        }
+        #score {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+        .level-info {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            animation: fadeInOut 3s forwards;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="score">得分: 0</div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <div class="button-group">
+            <button id="moveForward">↑</button>
+            <button id="moveBackward">↓</button>
+        </div>
+        <div class="button-group">
+            <button id="turnLeft">←</button>
+            <button id="turnRight">→</button>
+            <button id="fire">🔥</button>
+        </div>
+    </div>
+    <audio id="shootSound" src="sounds/shoot.mp3" preload="auto"></audio>
+    <audio id="hitSound" src="sounds/hit.mp3" preload="auto"></audio>
+    <audio id="reloadSound" src="sounds/reload.mp3" preload="auto"></audio>
+    <audio id="tankMoveSound" src="sounds/tank_move.mp3" preload="auto"></audio>
+    <audio id="explosionSound" src="sounds/explosion.mp3" preload="auto"></audio>
+    <script src="game.js"></script>
+</body>
+</html> 
