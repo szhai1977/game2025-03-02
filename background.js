@@ -37,7 +37,7 @@ class Background3D {
     
     init() {
         // 添加环境光
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0x88aa88, 0.4); // 偏绿色的环境光
         this.scene.add(ambientLight);
         
         // 添加平行光（模拟太阳光）
@@ -45,10 +45,10 @@ class Background3D {
         directionalLight.position.set(50, 100, 0);
         this.scene.add(directionalLight);
         
-        // 创建沙漠地面
+        // 创建绿色地面
         const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
         const groundMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xD2B48C,  // 沙子颜色
+            color: 0x355E3B,  // 深绿色
             side: THREE.DoubleSide,
             shininess: 0
         });
@@ -59,18 +59,21 @@ class Background3D {
         // 添加地面纹理变化
         const vertices = ground.geometry.attributes.position.array;
         for (let i = 0; i < vertices.length; i += 3) {
-            vertices[i + 1] = Math.random() * 0.5;
+            vertices[i + 1] = Math.random() * 0.3; // 减小地形起伏
         }
         ground.geometry.attributes.position.needsUpdate = true;
         
         this.scene.add(ground);
         
         // 添加仙人掌和木箱
-        this.addDecorations();
+        this.addDesertDecorations();
         
         // 设置相机位置
         this.camera.position.set(0, 40, 60);
         this.camera.lookAt(0, 0, 0);
+        
+        // 设置天空颜色
+        this.renderer.setClearColor(0x87CEEB); // 天空蓝
     }
     
     createCactus(x, z) {
@@ -103,41 +106,7 @@ class Background3D {
         return group;
     }
     
-    createWoodenBox(x, z) {
-        const group = new THREE.Group();
-        
-        // 创建木箱
-        const boxGeometry = new THREE.BoxGeometry(3, 3, 3);
-        const woodMaterial = new THREE.MeshPhongMaterial({
-            color: 0x8B4513,
-            shininess: 5
-        });
-        
-        const box = new THREE.Mesh(boxGeometry, woodMaterial);
-        
-        // 添加边缘装饰
-        const edgeGeometry = new THREE.BoxGeometry(3.2, 0.4, 0.4);
-        const edgeMaterial = new THREE.MeshPhongMaterial({
-            color: 0x4A3728,
-            shininess: 10
-        });
-        
-        // 添加四个边缘
-        for (let i = 0; i < 4; i++) {
-            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-            edge.position.y = 1.5;
-            edge.rotation.y = (Math.PI / 2) * i;
-            box.add(edge);
-        }
-        
-        box.position.set(x, 1.5, z);
-        box.rotation.y = Math.random() * Math.PI * 2;
-        
-        group.add(box);
-        return group;
-    }
-    
-    addDecorations() {
+    addDesertDecorations() {
         // 添加仙人掌
         for (let i = 0; i < 30; i++) {
             const x = (Math.random() - 0.5) * 180;
@@ -158,32 +127,207 @@ class Background3D {
     createSoldier(x, z) {
         const group = new THREE.Group();
         
-        // 士兵身体
-        const bodyGeometry = new THREE.CylinderGeometry(0.8, 0.8, 3, 8);
+        // 士兵身体 - 使用更复杂的几何体
+        const bodyGeometry = new THREE.CylinderGeometry(0.8, 0.8, 3, 12);
         const bodyMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x2F4F2F,  // 军绿色
-            shininess: 30
+            shininess: 30,
+            specular: 0x1a1a1a
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         group.add(body);
         
-        // 头部
-        const headGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+        // 添加背包
+        const backpackGeometry = new THREE.BoxGeometry(0.8, 1, 0.4);
+        const backpackMaterial = new THREE.MeshPhongMaterial({
+            color: 0x3A5F3A,
+            shininess: 20
+        });
+        const backpack = new THREE.Mesh(backpackGeometry, backpackMaterial);
+        backpack.position.set(0, 0.5, -0.6);
+        group.add(backpack);
+        
+        // 添加腰带
+        const beltGeometry = new THREE.TorusGeometry(0.85, 0.08, 8, 16);
+        const beltMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4A3728,
+            shininess: 30
+        });
+        const belt = new THREE.Mesh(beltGeometry, beltMaterial);
+        belt.position.y = 0;
+        belt.rotation.x = Math.PI / 2;
+        group.add(belt);
+        
+        // 添加弹药包
+        const ammoPackGeometry = new THREE.BoxGeometry(0.3, 0.4, 0.2);
+        const ammoPackMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2A2A2A,
+            shininess: 20
+        });
+        const ammoPack = new THREE.Mesh(ammoPackGeometry, ammoPackMaterial);
+        ammoPack.position.set(0.6, 0, 0.5);
+        group.add(ammoPack);
+        
+        // 制服上衣
+        const uniformTopGeometry = new THREE.CylinderGeometry(0.85, 0.8, 1.5, 12);
+        const uniformTopMaterial = new THREE.MeshPhongMaterial({
+            color: 0x3A5F3A,
+            shininess: 20
+        });
+        const uniformTop = new THREE.Mesh(uniformTopGeometry, uniformTopMaterial);
+        uniformTop.position.y = 0.75;
+        group.add(uniformTop);
+        
+        // 制服下装
+        const uniformBottomGeometry = new THREE.CylinderGeometry(0.8, 0.6, 1.5, 12);
+        const uniformBottomMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2F4F2F,
+            shininess: 20
+        });
+        const uniformBottom = new THREE.Mesh(uniformBottomGeometry, uniformBottomMaterial);
+        uniformBottom.position.y = -0.75;
+        group.add(uniformBottom);
+        
+        // 头部 - 使用更多细节
+        const headGeometry = new THREE.SphereGeometry(0.5, 12, 12);
         const headMaterial = new THREE.MeshPhongMaterial({
-            color: 0x2F4F2F
+            color: 0xD2B48C,  // 肤色
+            shininess: 10
         });
         const head = new THREE.Mesh(headGeometry, headMaterial);
         head.position.y = 2;
         group.add(head);
         
-        // 武器
-        const gunGeometry = new THREE.BoxGeometry(0.2, 0.2, 2);
-        const gunMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1a1a1a
+        // 添加头盔
+        const helmetGeometry = new THREE.SphereGeometry(0.55, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+        const helmetMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4A5D23,
+            shininess: 40
         });
-        const gun = new THREE.Mesh(gunGeometry, gunMaterial);
-        gun.position.set(0.5, 1, 0.5);
-        group.add(gun);
+        const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+        helmet.position.y = 2.2;
+        group.add(helmet);
+        
+        // 添加头盔网罩
+        const netGeometry = new THREE.SphereGeometry(0.56, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+        const netMaterial = new THREE.MeshPhongMaterial({
+            color: 0x5A6D33,
+            wireframe: true,
+            shininess: 30
+        });
+        const net = new THREE.Mesh(netGeometry, netMaterial);
+        net.position.y = 2.2;
+        group.add(net);
+        
+        // 添加头盔带
+        const strapGeometry = new THREE.TorusGeometry(0.5, 0.05, 8, 16, Math.PI);
+        const strapMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2A2A2A,
+            shininess: 20
+        });
+        const strap = new THREE.Mesh(strapGeometry, strapMaterial);
+        strap.position.y = 2;
+        strap.rotation.x = Math.PI / 2;
+        group.add(strap);
+        
+        // 武器 - 更详细的步枪
+        const gunGroup = new THREE.Group();
+        
+        // 枪身
+        const gunBodyGeometry = new THREE.BoxGeometry(0.2, 0.2, 2);
+        const gunBodyMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a1a1a,
+            shininess: 50
+        });
+        const gunBody = new THREE.Mesh(gunBodyGeometry, gunBodyMaterial);
+        gunGroup.add(gunBody);
+        
+        // 枪托
+        const stockGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.5);
+        const stockMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4A3728,
+            shininess: 30
+        });
+        const stock = new THREE.Mesh(stockGeometry, stockMaterial);
+        stock.position.z = -1.2;
+        gunGroup.add(stock);
+        
+        // 瞄准镜
+        const scopeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 8);
+        const scopeMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2A2A2A,
+            shininess: 60
+        });
+        const scope = new THREE.Mesh(scopeGeometry, scopeMaterial);
+        scope.position.z = 0.5;
+        scope.rotation.x = Math.PI / 2;
+        gunGroup.add(scope);
+        
+        // 弹夹
+        const magazineGeometry = new THREE.BoxGeometry(0.15, 0.4, 0.2);
+        const magazineMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2A2A2A,
+            shininess: 40
+        });
+        const magazine = new THREE.Mesh(magazineGeometry, magazineMaterial);
+        magazine.position.y = -0.3;
+        gunGroup.add(magazine);
+        
+        gunGroup.position.set(0.5, 1, 0.5);
+        group.add(gunGroup);
+        
+        // 添加腿部
+        const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 8);
+        const legMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2F4F2F,
+            shininess: 20
+        });
+        
+        // 左腿
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.3, -2.25, 0);
+        group.add(leftLeg);
+        
+        // 右腿
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.3, -2.25, 0);
+        group.add(rightLeg);
+        
+        // 添加护膝
+        const kneepadGeometry = new THREE.SphereGeometry(0.25, 8, 8, 0, Math.PI);
+        const kneepadMaterial = new THREE.MeshPhongMaterial({
+            color: 0x2A2A2A,
+            shininess: 30
+        });
+        
+        // 左护膝
+        const leftKneepad = new THREE.Mesh(kneepadGeometry, kneepadMaterial);
+        leftKneepad.position.set(-0.3, -2, 0.2);
+        leftKneepad.rotation.x = Math.PI / 2;
+        group.add(leftKneepad);
+        
+        // 右护膝
+        const rightKneepad = new THREE.Mesh(kneepadGeometry, kneepadMaterial);
+        rightKneepad.position.set(0.3, -2, 0.2);
+        rightKneepad.rotation.x = Math.PI / 2;
+        group.add(rightKneepad);
+        
+        // 添加靴子
+        const bootGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.6);
+        const bootMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1a1a1a,
+            shininess: 10
+        });
+        
+        // 左靴子
+        const leftBoot = new THREE.Mesh(bootGeometry, bootMaterial);
+        leftBoot.position.set(-0.3, -3, 0);
+        group.add(leftBoot);
+        
+        // 右靴子
+        const rightBoot = new THREE.Mesh(bootGeometry, bootMaterial);
+        rightBoot.position.set(0.3, -3, 0);
+        group.add(rightBoot);
         
         group.position.set(x, 1.5, z);
         
@@ -742,11 +886,13 @@ class Background3D {
 }
 
 // 创建3D背景实例
-const background = new Background3D();
+window.addEventListener('DOMContentLoaded', () => {
+    window.gameBackground = new Background3D();
+});
 
 // 处理窗口大小变化
 window.addEventListener('resize', () => {
-    background.camera.aspect = window.innerWidth / window.innerHeight;
-    background.camera.updateProjectionMatrix();
-    background.renderer.setSize(window.innerWidth, window.innerHeight);
+    window.gameBackground.camera.aspect = window.innerWidth / window.innerHeight;
+    window.gameBackground.camera.updateProjectionMatrix();
+    window.gameBackground.renderer.setSize(window.innerWidth, window.innerHeight);
 });

@@ -57,9 +57,19 @@
             90% { opacity: 1; }
             100% { opacity: 0; }
         }
+
+        #background3d {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
     </style>
 </head>
 <body>
+    <div id="background3d"></div>
     <div id="score">得分: 0</div>
     <canvas id="gameCanvas"></canvas>
     <div id="controls">
@@ -78,6 +88,12 @@
     <audio id="reloadSound" src="sounds/reload.mp3" preload="auto"></audio>
     <audio id="tankMoveSound" src="sounds/tank_move.mp3" preload="auto"></audio>
     <audio id="explosionSound" src="sounds/explosion.mp3" preload="auto"></audio>
+    
+    <!-- Three.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- 游戏脚本 -->
+    <script src="background.js"></script>
     <script src="game.js"></script>
 </body>
 </html> 
