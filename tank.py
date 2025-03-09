@@ -1,6 +1,7 @@
 class Tank:
     def __init__(self):
         self.health = 100
+        self.max_health = 100  # 添加最大生命值属性
         self.is_alive = True
         self.position = {'x': 0, 'y': 0}
         self.color = 'white'  # 设置坦克颜色为白色
@@ -16,4 +17,20 @@ class Tank:
             self.health = 0
     
     def is_destroyed(self):
-        return not self.is_alive 
+        return not self.is_alive
+        
+    def take_damage(self, amount):
+        """处理坦克受到的伤害"""
+        if self.is_alive:
+            self.health -= amount
+            print(f"坦克受到了 {amount} 点伤害, 剩余生命值: {self.health}")
+            
+            # 检查坦克是否被摧毁
+            if self.health <= 0:
+                self.health = 0
+                self.is_alive = False
+                print("坦克被摧毁了！")
+                
+    def get_health_percentage(self):
+        """返回坦克当前生命值的百分比"""
+        return self.health / self.max_health 

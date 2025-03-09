@@ -17,11 +17,19 @@ class Game {
             y: this.canvas.height - 50,
             angle: 0,
             speed: 3,
-            rotationSpeed: 0.05
+            rotationSpeed: 0.05,
+            health: 100,  // 添加生命值属性
+            maxHealth: 100  // 添加最大生命值属性
         };
         
         // 子弹数组
         this.bullets = [];
+        
+        // 敌人子弹数组
+        this.enemyBullets = [];
+        
+        // 敌人攻击计时器
+        this.lastEnemyAttackTime = 0;
         
         // 障碍物数组
         this.obstacles = [];
@@ -286,64 +294,100 @@ class Game {
                     // 减少敌人生命值
                     enemy.health--;
                     
-                    if (enemy.health <= 0) {
-                        // 敌人被消灭
-                        this.createExplosionSound();
-                        this.score += enemy.points;
-                        document.getElementById('score').textContent = `得分: ${this.score}`;
-                        this.obstacles.splice(j, 1);
-                    } else {
-                        // 敌人受伤但未死亡
-                        this.createHitSound();
-                    }
+                    // 播放击中音效
+                    this.createHitSound();
                     
+                    // 如果敌人生命值为0，移除敌人
+                    if (enemy.health <= 0) {
+                        this.obstacles.splice(j, 1);
+                        this.score += this.enemyTypes[enemy.type].points;
+                        
+                        // 如果所有敌人都被消灭，进入下一关
+                        if (this.obstacles.length === 0) {
+                            if (this.level < this.maxLevel) {
+                                this.level++;
+                                this.startLevel(this.level);
+                            } else {
+                                alert('恭喜你通关了！');
+                                this.isGameOver = true;
+                            }
+                        }
+                    }
                     break;
                 }
             }
             
             // 移除超出画布的子弹
-            if (bullet && (bullet.x < 0 || bullet.x > this.canvas.width || 
-                bullet.y < 0 || bullet.y > this.canvas.height)) {
+            if (bullet.x < 0 || bullet.x > this.canvas.width || 
+                bullet.y < 0 || bullet.y > this.canvas.height) {
                 this.bullets.splice(i, 1);
             }
         }
         
-        // 检查关卡是否完成
-        if (this.obstacles.length === 0) {
-            if (this.level < this.maxLevel) {
-                this.level++;
-                this.startLevel(this.level);
-            } else {
-                this.isGameOver = true;
-                alert(`恭喜通关！\n最终得分: ${this.score}`);
-                location.reload();
+        // 敌人攻击逻辑
+        const now = Date.now();
+        if (now - this.lastEnemyAttackTime > 2000) { // 每2秒攻击一次
+            // 随机选择一个敌人进行攻击
+            if (this.obstacles.length > 0) {
+                const randomIndex = Math.floor(Math.random() * this.obstacles.length);
+                const enemy = this.obstacles[randomIndex];
+                
+                // 计算敌人到玩家的角度
+                const dx = this.tank.x - enemy.x;
+                const dy = this.tank.y - enemy.y;
+                const angle = Math.atan2(dy, dx);
+                
+                // 创建敌人子弹
+                this.enemyBullets.push({
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + enemy.height / 2,
+                    angle: angle,
+                    speed: 3,
+                    damage: 10
+                });
+                
+                // 更新攻击时间
+                this.lastEnemyAttackTime = now;
             }
         }
-
-        // 更新士兵位置
-        this.obstacles.forEach(soldier => {
-            soldier.moveTimer++;
-            if (soldier.moveTimer >= soldier.moveInterval) {
-                // 随机改变方向
-                soldier.direction += (Math.random() - 0.5) * Math.PI / 2;
-                soldier.moveTimer = 0;
-                soldier.moveInterval = 100 + Math.random() * 200;
+        
+        // 更新敌人子弹位置
+        for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+            const bullet = this.enemyBullets[i];
+            bullet.x += Math.cos(bullet.angle) * bullet.speed;
+            bullet.y += Math.sin(bullet.angle) * bullet.speed;
+            
+            // 检查子弹是否击中玩家坦克
+            const dx = bullet.x - this.tank.x;
+            const dy = bullet.y - this.tank.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 20) { // 坦克半径约为20
+                // 移除子弹
+                this.enemyBullets.splice(i, 1);
+                
+                // 减少玩家生命值
+                this.tank.health -= bullet.damage;
+                
+                // 播放击中音效
+                this.createHitSound();
+                
+                // 如果玩家生命值为0，游戏结束
+                if (this.tank.health <= 0) {
+                    this.tank.health = 0;
+                    alert('游戏结束！');
+                    this.isGameOver = true;
+                }
+                
+                continue;
             }
-
-            // 移动士兵
-            const newX = soldier.x + Math.cos(soldier.direction) * soldier.speed;
-            const newY = soldier.y + Math.sin(soldier.direction) * soldier.speed;
-
-            // 确保士兵不会走出画布
-            if (newX > 20 && newX < this.canvas.width - 60 &&
-                newY > 20 && newY < this.canvas.height - 60) {
-                soldier.x = newX;
-                soldier.y = newY;
-            } else {
-                // 如果要走出画布，改变方向
-                soldier.direction += Math.PI;
+            
+            // 移除超出画布的子弹
+            if (bullet.x < 0 || bullet.x > this.canvas.width || 
+                bullet.y < 0 || bullet.y > this.canvas.height) {
+                this.enemyBullets.splice(i, 1);
             }
-        });
+        }
     }
     
     checkCollision(bullet, obstacle) {
@@ -437,6 +481,9 @@ class Game {
             this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width/2, obstacle.height/2);
         });
         
+        // 绘制玩家坦克生命值
+        this.drawPlayerHealthBar();
+        
         // 绘制士兵
         this.obstacles.forEach(enemy => {
             // 敌人阴影
@@ -467,96 +514,28 @@ class Game {
         // 绘制坦克
         this.ctx.save();
         this.ctx.translate(this.tank.x, this.tank.y);
-        this.ctx.rotate(this.tank.angle + Math.PI / 2);
-        
-        // 添加坦克阴影
-        this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        this.ctx.fillRect(-18, -23, 36, 46);
-        
-        // 坦克履带
-        this.ctx.fillStyle = '#1B1B1B';
-        this.ctx.fillRect(-20, -25, 8, 50); // 左履带
-        this.ctx.fillRect(12, -25, 8, 50);  // 右履带
-        
-        // 履带细节
-        this.ctx.fillStyle = '#2D2D2D';
-        for(let i = -20; i < 20; i += 6) {
-            this.ctx.fillRect(-20, i, 8, 3); // 左履带细节
-            this.ctx.fillRect(12, i, 8, 3);  // 右履带细节
-        }
-        
-        // 坦克主体 - 添加渐变效果
-        const bodyGradient = this.ctx.createLinearGradient(-15, -20, 15, 20);
-        bodyGradient.addColorStop(0, '#4CAF50');
-        bodyGradient.addColorStop(0.5, '#388E3C');
-        bodyGradient.addColorStop(1, '#2E7D32');
-        this.ctx.fillStyle = bodyGradient;
-        this.ctx.fillRect(-15, -20, 30, 40);
-        
-        // 坦克装甲板 - 添加金属质感
-        this.ctx.fillStyle = '#1B5E20';
-        this.ctx.fillRect(-12, -15, 24, 5);  // 上装甲板
-        this.ctx.fillRect(-12, 5, 24, 5);    // 下装甲板
-        
-        // 炮塔底座
-        this.ctx.fillStyle = '#2E7D32';
-        this.ctx.beginPath();
-        this.ctx.arc(0, -5, 12, 0, Math.PI * 2);
-        this.ctx.fill();
-        
-        // 炮管 - 添加渐变和细节
-        const barrelGradient = this.ctx.createLinearGradient(-5, -40, 5, -20);
-        barrelGradient.addColorStop(0, '#2E7D32');
-        barrelGradient.addColorStop(1, '#1B5E20');
-        this.ctx.fillStyle = barrelGradient;
-        this.ctx.fillRect(-5, -40, 10, 20);
-        
-        // 炮管消音器
-        this.ctx.fillStyle = '#1B5E20';
-        this.ctx.fillRect(-6, -45, 12, 5);
-        
-        // 添加高光效果
-        this.ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        this.ctx.beginPath();
-        this.ctx.arc(0, -5, 8, 0, Math.PI);
-        this.ctx.fill();
-        
-        // 添加装饰性细节
-        this.ctx.strokeStyle = '#1B5E20';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(-10, -10);
-        this.ctx.lineTo(10, -10);
-        this.ctx.stroke();
-        
-        // 添加标识符号
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '8px Arial';
-        this.ctx.fillText('★', -4, 0);
-        
+        this.ctx.rotate(this.tank.angle);
+        drawTank(this.ctx, 0, 0, 0);
         this.ctx.restore();
         
-        // 绘制子弹（添加发光效果）
+        // 绘制玩家子弹
         this.bullets.forEach(bullet => {
-            // 发光效果
-            const gradient = this.ctx.createRadialGradient(
-                bullet.x, bullet.y, 0,
-                bullet.x, bullet.y, 6
-            );
-            gradient.addColorStop(0, 'rgba(255,200,0,1)');
-            gradient.addColorStop(1, 'rgba(255,0,0,0)');
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(bullet.x, bullet.y, 6, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // 子弹主体
+            this.drawBullet(bullet);
+        });
+        
+        // 绘制敌人子弹
+        this.enemyBullets.forEach(bullet => {
+            // 使用红色绘制敌人子弹
             this.ctx.fillStyle = '#FF0000';
             this.ctx.beginPath();
             this.ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
             this.ctx.fill();
         });
+        
+        // 显示分数
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '20px Arial';
+        this.ctx.fillText(`分数: ${this.score}`, 20, this.canvas.height - 20);
     }
 
     drawBackground() {
@@ -975,6 +954,73 @@ class Game {
     drawObstacle(obstacle) {
         this.ctx.fillStyle = '#4A4A4A';  // 恢复为深灰色
         this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    }
+
+    // 添加绘制玩家坦克生命值的方法
+    drawPlayerHealthBar() {
+        // 在屏幕顶部绘制生命值条
+        const barWidth = 200;
+        const barHeight = 20;
+        const healthPercent = this.tank.health / this.tank.maxHealth;
+        const barX = 20;
+        const barY = 20;
+        
+        // 绘制半透明背景
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 25);
+        
+        // 绘制生命值文字
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText(`生命值: ${this.tank.health}/${this.tank.maxHealth}`, barX, barY + barHeight + 15);
+        
+        // 绘制生命值条边框
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        // 绘制生命值条背景
+        this.ctx.fillStyle = '#FF0000';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // 绘制当前生命值
+        this.ctx.fillStyle = '#00FF00';
+        this.ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+        
+        // 在屏幕右下角绘制圆形生命值指示器
+        const radius = 30;
+        const centerX = this.canvas.width - radius - 20;
+        const centerY = this.canvas.height - radius - 20;
+        
+        // 绘制圆形背景
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 绘制边框
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
+        // 绘制生命值扇形
+        this.ctx.fillStyle = '#00FF00';
+        this.ctx.beginPath();
+        this.ctx.moveTo(centerX, centerY);
+        this.ctx.arc(centerX, centerY, radius - 2, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * healthPercent));
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // 绘制生命值文字
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(`${this.tank.health}`, centerX, centerY);
+        this.ctx.textAlign = 'start';
+        this.ctx.textBaseline = 'alphabetic';
     }
 }
 
