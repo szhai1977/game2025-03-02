@@ -48,7 +48,7 @@ class Background3D {
         // 创建绿色地面
         const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
         const groundMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x355E3B,  // 深绿色
+            color: 0x90EE90,  // 浅绿色
             side: THREE.DoubleSide,
             shininess: 0
         });
@@ -59,63 +59,59 @@ class Background3D {
         // 添加地面纹理变化
         const vertices = ground.geometry.attributes.position.array;
         for (let i = 0; i < vertices.length; i += 3) {
-            vertices[i + 1] = Math.random() * 0.3; // 减小地形起伏
+            vertices[i + 1] = Math.random() * 0.2; // 减小地形起伏，模拟草原平坦特性
         }
         ground.geometry.attributes.position.needsUpdate = true;
         
         this.scene.add(ground);
         
-        // 添加仙人掌和木箱
-        this.addDesertDecorations();
+        // 添加树木和石头
+        this.addPrairieDecorations();
         
         // 设置相机位置
         this.camera.position.set(0, 40, 60);
         this.camera.lookAt(0, 0, 0);
         
         // 设置天空颜色
-        this.renderer.setClearColor(0x87CEEB); // 天空蓝
+        this.renderer.setClearColor(0x87CEEB); // 保持天蓝色
     }
     
-    createCactus(x, z) {
+    createTree(x, z) {
         const group = new THREE.Group();
         
-        // 主干
-        const trunkGeometry = new THREE.CylinderGeometry(1, 1.2, 6, 8);
-        const cactusMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x2F4F2F,
+        // 树干
+        const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.8, 8, 8);
+        const trunkMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x8B4513,  // 棕色
             shininess: 0
         });
-        const trunk = new THREE.Mesh(trunkGeometry, cactusMaterial);
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
         group.add(trunk);
         
-        // 添加分支
-        const branchCount = Math.floor(Math.random() * 2) + 1;
-        for (let i = 0; i < branchCount; i++) {
-            const height = 2 + Math.random() * 2;
-            const branchGeometry = new THREE.CylinderGeometry(0.6, 0.8, height, 8);
-            const branch = new THREE.Mesh(branchGeometry, cactusMaterial);
-            
-            branch.position.y = Math.random() * 2;
-            branch.position.x = (Math.random() - 0.5) * 2;
-            branch.rotation.z = (Math.random() - 0.5) * Math.PI / 3;
-            
-            group.add(branch);
-        }
+        // 树冠
+        const crownGeometry = new THREE.SphereGeometry(3, 8, 8);
+        const crownMaterial = new THREE.MeshPhongMaterial({
+            color: 0x228B22,  // 森林绿
+            shininess: 0
+        });
+        const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+        crown.position.y = 5;
+        group.add(crown);
         
         group.position.set(x, 0, z);
         return group;
     }
     
-    addDesertDecorations() {
-        // 添加仙人掌
-        for (let i = 0; i < 30; i++) {
+    addPrairieDecorations() {
+        // 添加树木
+        for (let i = 0; i < 20; i++) {
             const x = (Math.random() - 0.5) * 180;
             const z = (Math.random() - 0.5) * 180;
-            const cactus = this.createCactus(x, z);
-            this.scene.add(cactus);
+            const tree = this.createTree(x, z);
+            this.scene.add(tree);
         }
         
-        // 添加木箱
+        // 添加石头
         for (let i = 0; i < 15; i++) {
             const x = (Math.random() - 0.5) * 160;
             const z = (Math.random() - 0.5) * 160;

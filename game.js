@@ -354,68 +354,62 @@ class Game {
     }
     
     createBackground() {
-        // 创建沙漠背景图案
-        this.desertPattern = this.createDesertPattern();
+        // 创建草原背景图案
+        this.prairiePattern = this.createPrairiePattern();
         
-        // 创建装饰元素（仙人掌、岩石等）
+        // 创建装饰元素（树木、石头等）
         this.decorations = [];
         for (let i = 0; i < 30; i++) {
             this.decorations.push({
                 x: Math.random() * this.canvas.width,
                 y: Math.random() * this.canvas.height,
-                type: Math.random() < 0.6 ? 'cactus' : 'rock',
+                type: Math.random() < 0.6 ? 'tree' : 'rock',
                 size: Math.random() * 30 + 20,
                 rotation: Math.random() * Math.PI * 2
             });
         }
     }
 
-    createDesertPattern() {
+    createPrairiePattern() {
         const patternCanvas = document.createElement('canvas');
         const patternContext = patternCanvas.getContext('2d');
         patternCanvas.width = 200;
         patternCanvas.height = 200;
 
-        // 基础沙漠颜色
-        patternContext.fillStyle = '#DEB887';  // 沙褐色
+        // 基础草原颜色
+        patternContext.fillStyle = '#90EE90';  // 浅绿色
         patternContext.fillRect(0, 0, 200, 200);
         
-        // 添加沙丘纹理
-        for (let i = 0; i < 200; i += 20) {
-            for (let j = 0; j < 200; j += 20) {
-                patternContext.fillStyle = `rgba(205,133,63,${Math.random() * 0.2})`;
-                patternContext.fillRect(i, j, 20, 20);
+        // 添加草地纹理
+        for (let i = 0; i < 200; i += 10) {
+            for (let j = 0; j < 200; j += 10) {
+                patternContext.fillStyle = `rgba(34,139,34,${Math.random() * 0.2})`;  // 深绿色点缀
+                patternContext.fillRect(i + Math.random() * 10, j + Math.random() * 10, 2, 8);
             }
         }
         
-        // 添加沙粒效果
-        for (let i = 0; i < 1000; i++) {
-            patternContext.fillStyle = `rgba(255,228,181,${Math.random() * 0.3})`;
+        // 添加草叶效果
+        for (let i = 0; i < 500; i++) {
+            patternContext.strokeStyle = `rgba(144,238,144,${Math.random() * 0.3})`;  // 浅绿色草叶
             patternContext.beginPath();
-            patternContext.arc(
-                Math.random() * 200,
-                Math.random() * 200,
-                Math.random() * 2,
-                0,
-                Math.PI * 2
-            );
-            patternContext.fill();
-        }
-
-        // 添加沙丘线条
-        patternContext.strokeStyle = 'rgba(160,82,45,0.1)';
-        for (let i = 0; i < 10; i++) {
-            patternContext.beginPath();
-            patternContext.moveTo(0, Math.random() * 200);
-            patternContext.bezierCurveTo(
-                50, Math.random() * 200,
-                150, Math.random() * 200,
-                200, Math.random() * 200
-            );
+            const x = Math.random() * 200;
+            const y = Math.random() * 200;
+            patternContext.moveTo(x, y);
+            patternContext.lineTo(x + (Math.random() - 0.5) * 10, y - Math.random() * 15);
             patternContext.stroke();
         }
 
-        return patternContext.createPattern(patternCanvas, 'repeat');
+        // 添加野花点缀
+        for (let i = 0; i < 50; i++) {
+            patternContext.fillStyle = `rgba(255,255,0,${Math.random() * 0.2})`;  // 黄色野花
+            const x = Math.random() * 200;
+            const y = Math.random() * 200;
+            patternContext.beginPath();
+            patternContext.arc(x, y, 2, 0, Math.PI * 2);
+            patternContext.fill();
+        }
+
+        return this.ctx.createPattern(patternCanvas, 'repeat');
     }
 
     draw() {
@@ -566,76 +560,63 @@ class Game {
     }
 
     drawBackground() {
-        // 绘制沙漠背景
-        this.ctx.fillStyle = this.desertPattern;
+        // 绘制草原背景
+        this.ctx.fillStyle = this.prairiePattern;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // 添加热浪效果
+        // 添加自然光效果
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-        gradient.addColorStop(0, 'rgba(255,140,0,0.1)');
-        gradient.addColorStop(0.5, 'rgba(255,69,0,0.05)');
-        gradient.addColorStop(1, 'rgba(255,140,0,0.15)');
+        gradient.addColorStop(0, 'rgba(135,206,235,0.1)');  // 天蓝色
+        gradient.addColorStop(0.5, 'rgba(144,238,144,0.05)');  // 浅绿色
+        gradient.addColorStop(1, 'rgba(34,139,34,0.15)');  // 森林绿
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     drawDecorations() {
         this.decorations.forEach(dec => {
-            if (dec.type === 'cactus') {
-                // 绘制仙人掌
+            if (dec.type === 'tree') {
+                // 绘制树木
                 this.ctx.save();
                 this.ctx.translate(dec.x + dec.size/2, dec.y + dec.size);
                 
-                // 主干
-                this.ctx.fillStyle = '#2F4F2F';
+                // 树干
+                this.ctx.fillStyle = '#8B4513';  // 棕色
                 this.ctx.fillRect(-dec.size/6, -dec.size, dec.size/3, dec.size);
                 
-                // 分支
-                this.ctx.fillRect(-dec.size/3, -dec.size * 0.7, dec.size/3, dec.size/4);
-                this.ctx.fillRect(dec.size/6, -dec.size * 0.5, dec.size/3, dec.size/4);
-                
-                // 添加阴影
-                this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                // 树冠
+                this.ctx.fillStyle = '#228B22';  // 森林绿
                 this.ctx.beginPath();
-                this.ctx.ellipse(0, 0, dec.size/2, dec.size/8, 0, 0, Math.PI * 2);
+                this.ctx.arc(0, -dec.size, dec.size/2, 0, Math.PI * 2);
                 this.ctx.fill();
                 
                 this.ctx.restore();
-            } else if (dec.type === 'rock') {
-                // 绘制岩石
+            } else {
+                // 绘制石头
                 this.ctx.save();
                 this.ctx.translate(dec.x + dec.size/2, dec.y + dec.size/2);
                 this.ctx.rotate(dec.rotation);
                 
-                // 岩石主体
-                const rockGradient = this.ctx.createLinearGradient(
-                    -dec.size/2, -dec.size/2,
-                    dec.size/2, dec.size/2
-                );
-                rockGradient.addColorStop(0, '#8B4513');
-                rockGradient.addColorStop(1, '#654321');
-                
-                this.ctx.fillStyle = rockGradient;
+                this.ctx.fillStyle = '#808080';  // 灰色
                 this.ctx.beginPath();
-                this.ctx.moveTo(-dec.size/2, -dec.size/3);
-                this.ctx.lineTo(dec.size/2, -dec.size/4);
-                this.ctx.lineTo(dec.size/3, dec.size/2);
-                this.ctx.lineTo(-dec.size/3, dec.size/3);
-                this.ctx.closePath();
+                this.ctx.ellipse(0, 0, dec.size/2, dec.size/3, 0, 0, Math.PI * 2);
                 this.ctx.fill();
                 
-                // 岩石纹理
+                // 添加石头纹理
                 this.ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-                this.ctx.beginPath();
-                this.ctx.moveTo(-dec.size/3, 0);
-                this.ctx.lineTo(dec.size/3, 0);
-                this.ctx.stroke();
-                
-                // 岩石阴影
-                this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                this.ctx.beginPath();
-                this.ctx.ellipse(0, dec.size/2, dec.size/2, dec.size/8, 0, 0, Math.PI * 2);
-                this.ctx.fill();
+                for (let i = 0; i < 3; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(
+                        (Math.random() - 0.5) * dec.size/3,
+                        (Math.random() - 0.5) * dec.size/4,
+                        dec.size/6,
+                        dec.size/8,
+                        Math.random() * Math.PI,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.stroke();
+                }
                 
                 this.ctx.restore();
             }
