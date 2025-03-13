@@ -19,7 +19,11 @@ class Game {
             speed: 3,
             rotationSpeed: 0.05,
             health: 100,  // 添加生命值属性
-            maxHealth: 100  // 添加最大生命值属性
+            maxHealth: 100,  // 添加最大生命值属性
+            isInvincible: false, // 无敌状态
+            invincibleEndTime: 0, // 无敌结束时间
+            showHealthResetEffect: false, // 显示生命值重置效果
+            healthResetEffectEndTime: 0 // 生命值重置效果结束时间
         };
         
         // 子弹数组
@@ -278,6 +282,19 @@ class Game {
         this.tank.x = Math.max(20, Math.min(this.canvas.width - 20, this.tank.x));
         this.tank.y = Math.max(20, Math.min(this.canvas.height - 20, this.tank.y));
         
+        // 检查无敌状态是否结束
+        if (this.tank.isInvincible && Date.now() > this.tank.invincibleEndTime) {
+            this.tank.isInvincible = false;
+        }
+        
+        // 检查生命值重置效果是否结束
+        if (this.tank.showHealthResetEffect && Date.now() > this.tank.healthResetEffectEndTime) {
+            this.tank.showHealthResetEffect = false;
+        }
+        
+        // 更新敌人位置和行为
+        this.updateEnemies();
+        
         // 更新子弹位置
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
@@ -366,17 +383,23 @@ class Game {
                 // 移除子弹
                 this.enemyBullets.splice(i, 1);
                 
-                // 减少玩家生命值
-                this.tank.health -= bullet.damage;
-                
-                // 播放击中音效
-                this.createHitSound();
-                
-                // 如果玩家生命值为0，游戏结束
-                if (this.tank.health <= 0) {
-                    this.tank.health = 0;
-                    alert('游戏结束！');
-                    this.isGameOver = true;
+                // 如果坦克不处于无敌状态，则减少生命值
+                if (!this.tank.isInvincible) {
+                    // 减少玩家生命值
+                    this.tank.health -= bullet.damage;
+                    
+                    // 播放击中音效
+                    this.createHitSound();
+                    
+                    // 如果玩家生命值为0，游戏结束
+                    if (this.tank.health <= 0) {
+                        this.tank.health = 0;
+                        alert('游戏结束！');
+                        this.isGameOver = true;
+                    }
+                } else {
+                    // 播放无敌状态下的偏转音效
+                    this.createDeflectSound();
                 }
                 
                 continue;
@@ -515,6 +538,24 @@ class Game {
         this.ctx.save();
         this.ctx.translate(this.tank.x, this.tank.y);
         this.ctx.rotate(this.tank.angle);
+        
+        // 如果坦克处于无敌状态，绘制无敌效果
+        if (this.tank.isInvincible) {
+            // 绘制无敌护盾效果
+            const shieldOpacity = 0.3 + Math.sin(Date.now() * 0.01) * 0.2; // 闪烁效果
+            this.ctx.fillStyle = `rgba(100, 200, 255, ${shieldOpacity})`;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // 绘制护盾边缘
+            this.ctx.strokeStyle = 'rgba(150, 220, 255, 0.8)';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            this.ctx.stroke();
+        }
+        
         drawTank(this.ctx, 0, 0, 0);
         this.ctx.restore();
         
@@ -536,6 +577,24 @@ class Game {
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.font = '20px Arial';
         this.ctx.fillText(`分数: ${this.score}`, 20, this.canvas.height - 20);
+        
+        // 如果显示生命值重置效果，绘制提示文本
+        if (this.tank.showHealthResetEffect) {
+            const opacity = Math.min(1, (this.tank.healthResetEffectEndTime - Date.now()) / 1000);
+            this.ctx.fillStyle = `rgba(0, 255, 0, ${opacity})`;
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('生命值已重置!', this.canvas.width / 2, this.canvas.height / 2 - 50);
+            this.ctx.textAlign = 'start';
+            
+            // 绘制从坦克向上飘动的加号效果
+            const effectProgress = 1 - opacity;
+            this.ctx.fillStyle = `rgba(0, 255, 0, ${opacity})`;
+            this.ctx.font = 'bold 20px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('+' + this.tank.maxHealth, this.tank.x, this.tank.y - 40 - effectProgress * 30);
+            this.ctx.textAlign = 'start';
+        }
     }
 
     drawBackground() {
@@ -614,6 +673,17 @@ class Game {
         this.level = level;
         this.obstacles = [];
         
+        // 重置玩家坦克生命值为满值
+        this.tank.health = this.tank.maxHealth;
+        
+        // 设置短暂无敌时间（3秒）
+        this.tank.isInvincible = true;
+        this.tank.invincibleEndTime = Date.now() + 3000;
+        
+        // 设置生命值重置效果（2秒）
+        this.tank.showHealthResetEffect = true;
+        this.tank.healthResetEffectEndTime = Date.now() + 2000;
+        
         // 根据关卡设置敌人数量和类型
         const enemyCount = {
             soldier: 5 + Math.floor(level * 1.5),
@@ -641,7 +711,7 @@ class Game {
             y: Math.random() * (this.canvas.height - size - 200) + 30,
             width: size,
             height: size,
-            type: type,
+            type: type,  // 确保设置了类型
             health: enemyData.health,
             speed: enemyData.speed + Math.random() * 0.3,
             direction: Math.random() * Math.PI * 2,
@@ -681,14 +751,18 @@ class Game {
     }
 
     drawSoldier(enemy) {
-        // 阴影效果
+        // 计算动画参数
+        const time = Date.now() * 0.001;
+        const breathingOffset = Math.sin(time * 2) * 0.5; // 呼吸效果
+        const walkingOffset = Math.sin(enemy.moveTimer * 0.1) * 3; // 行走效果
+        
+        // 阴影效果 - 更加自然的椭圆形
         this.ctx.fillStyle = 'rgba(0,0,0,0.2)';
         this.ctx.beginPath();
         this.ctx.ellipse(enemy.x + 20, enemy.y + 55, 15, 5, 0, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // 腿部 - 添加更自然的运动
-        const legOffset = Math.sin(enemy.moveTimer * 0.1) * 3;
+        // 腿部 - 添加更自然的运动和更多细节
         const legGradient = this.ctx.createLinearGradient(
             enemy.x + 13, enemy.y + 40,
             enemy.x + 19, enemy.y + 52
@@ -698,16 +772,21 @@ class Game {
         this.ctx.fillStyle = legGradient;
         
         // 左腿
-        this.ctx.fillRect(enemy.x + 13, enemy.y + 40, 6, 12 + legOffset);
+        this.ctx.fillRect(enemy.x + 13, enemy.y + 40, 6, 12 + walkingOffset);
         // 右腿
-        this.ctx.fillRect(enemy.x + 21, enemy.y + 40, 6, 12 - legOffset);
+        this.ctx.fillRect(enemy.x + 21, enemy.y + 40, 6, 12 - walkingOffset);
         
-        // 靴子
+        // 靴子 - 添加更多细节
         this.ctx.fillStyle = '#1a1a1a';
-        this.ctx.fillRect(enemy.x + 12, enemy.y + 50 + legOffset, 8, 4);
-        this.ctx.fillRect(enemy.x + 20, enemy.y + 50 - legOffset, 8, 4);
+        this.ctx.fillRect(enemy.x + 12, enemy.y + 50 + walkingOffset, 8, 4);
+        this.ctx.fillRect(enemy.x + 20, enemy.y + 50 - walkingOffset, 8, 4);
+        
+        // 靴子细节
+        this.ctx.fillStyle = '#0a0a0a';
+        this.ctx.fillRect(enemy.x + 12, enemy.y + 53 + walkingOffset, 8, 1);
+        this.ctx.fillRect(enemy.x + 20, enemy.y + 53 - walkingOffset, 8, 1);
 
-        // 身体 - 改进制服细节
+        // 身体 - 改进制服细节和质感
         const bodyGradient = this.ctx.createLinearGradient(
             enemy.x + 10, enemy.y + 15,
             enemy.x + 30, enemy.y + 40
@@ -716,33 +795,104 @@ class Game {
         bodyGradient.addColorStop(0.5, '#2F4F2F');
         bodyGradient.addColorStop(1, '#1B3B1B');
         this.ctx.fillStyle = bodyGradient;
-        this.ctx.fillRect(enemy.x + 10, enemy.y + 15, 20, 25);
+        
+        // 身体随呼吸微微起伏
+        this.ctx.fillRect(enemy.x + 10, enemy.y + 15 - breathingOffset, 20, 25 + breathingOffset);
 
-        // 制服细节
+        // 制服细节 - 添加更多军装元素
+        // 中央缝线
         this.ctx.strokeStyle = '#4A7F4A';
         this.ctx.lineWidth = 1;
         this.ctx.beginPath();
         this.ctx.moveTo(enemy.x + 20, enemy.y + 15);
         this.ctx.lineTo(enemy.x + 20, enemy.y + 40);
         this.ctx.stroke();
+        
+        // 口袋
+        this.ctx.fillStyle = '#2A4A2A';
+        this.ctx.fillRect(enemy.x + 12, enemy.y + 25, 6, 5);
+        this.ctx.fillRect(enemy.x + 22, enemy.y + 25, 6, 5);
+        
+        // 腰带
+        this.ctx.fillStyle = '#1A1A1A';
+        this.ctx.fillRect(enemy.x + 10, enemy.y + 35, 20, 2);
+        
+        // 肩章
+        this.ctx.fillStyle = '#4A7F4A';
+        this.ctx.fillRect(enemy.x + 10, enemy.y + 15, 5, 3);
+        this.ctx.fillRect(enemy.x + 25, enemy.y + 15, 5, 3);
+
+        // 手臂 - 添加手臂和手
+        this.ctx.fillStyle = '#2F4F2F';
+        // 左臂
+        this.ctx.fillRect(enemy.x + 7, enemy.y + 20, 4, 15);
+        // 右臂
+        this.ctx.fillRect(enemy.x + 29, enemy.y + 20, 4, 15);
+        
+        // 手
+        this.ctx.fillStyle = '#D2B48C';
+        this.ctx.beginPath();
+        this.ctx.arc(enemy.x + 7, enemy.y + 35, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.arc(enemy.x + 33, enemy.y + 35, 3, 0, Math.PI * 2);
+        this.ctx.fill();
 
         // 武器 - 更详细的步枪
+        // 枪身
         this.ctx.fillStyle = '#2A2A2A';
         this.ctx.fillRect(enemy.x + 5, enemy.y + 22, 30, 3);
+        
         // 枪托
         this.ctx.fillStyle = '#4A3728';
         this.ctx.fillRect(enemy.x + 2, enemy.y + 21, 5, 5);
+        
+        // 枪管
+        this.ctx.fillStyle = '#1A1A1A';
+        this.ctx.fillRect(enemy.x + 32, enemy.y + 22.5, 8, 2);
+        
         // 瞄准镜
         this.ctx.fillStyle = '#1A1A1A';
         this.ctx.fillRect(enemy.x + 20, enemy.y + 20, 4, 2);
+        
+        // 扳机
+        this.ctx.fillStyle = '#0A0A0A';
+        this.ctx.fillRect(enemy.x + 10, enemy.y + 25, 2, 2);
 
-        // 头部 - 添加面部特征
+        // 头部 - 添加面部特征和表情
         this.ctx.fillStyle = '#D2B48C';
         this.ctx.beginPath();
         this.ctx.arc(enemy.x + 20, enemy.y + 10, 8, 0, Math.PI * 2);
         this.ctx.fill();
+        
+        // 眼睛
+        this.ctx.fillStyle = '#000000';
+        this.ctx.beginPath();
+        this.ctx.ellipse(enemy.x + 17, enemy.y + 8, 1.5, 1, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.ellipse(enemy.x + 23, enemy.y + 8, 1.5, 1, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 眉毛 - 严肃表情
+        this.ctx.strokeStyle = '#000000';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.moveTo(enemy.x + 15, enemy.y + 6);
+        this.ctx.lineTo(enemy.x + 19, enemy.y + 5);
+        this.ctx.stroke();
+        this.ctx.beginPath();
+        this.ctx.moveTo(enemy.x + 21, enemy.y + 5);
+        this.ctx.lineTo(enemy.x + 25, enemy.y + 6);
+        this.ctx.stroke();
+        
+        // 嘴巴 - 紧闭的嘴
+        this.ctx.beginPath();
+        this.ctx.moveTo(enemy.x + 17, enemy.y + 13);
+        this.ctx.lineTo(enemy.x + 23, enemy.y + 13);
+        this.ctx.stroke();
 
-        // 头盔 - 更多细节
+        // 头盔 - 更多细节和质感
         const helmetGradient = this.ctx.createLinearGradient(
             enemy.x + 20, enemy.y,
             enemy.x + 20, enemy.y + 16
@@ -761,6 +911,38 @@ class Game {
         this.ctx.moveTo(enemy.x + 11, enemy.y + 8);
         this.ctx.lineTo(enemy.x + 29, enemy.y + 8);
         this.ctx.stroke();
+        
+        // 头盔装饰
+        this.ctx.fillStyle = '#2A3A13';
+        this.ctx.beginPath();
+        this.ctx.moveTo(enemy.x + 20, enemy.y);
+        this.ctx.lineTo(enemy.x + 24, enemy.y + 4);
+        this.ctx.lineTo(enemy.x + 16, enemy.y + 4);
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // 迷彩图案
+        this.ctx.fillStyle = '#2A3A13';
+        this.ctx.beginPath();
+        this.ctx.ellipse(enemy.x + 15, enemy.y + 3, 3, 2, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.ellipse(enemy.x + 25, enemy.y + 3, 3, 2, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 添加动态效果 - 呼吸或警戒状态
+        if (Math.random() < 0.01) { // 偶尔转头
+            this.ctx.fillStyle = '#D2B48C';
+            this.ctx.beginPath();
+            this.ctx.arc(enemy.x + 22, enemy.y + 10, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // 侧脸眼睛
+            this.ctx.fillStyle = '#000000';
+            this.ctx.beginPath();
+            this.ctx.ellipse(enemy.x + 25, enemy.y + 8, 1, 1.5, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
     }
 
     drawElite(enemy) {
@@ -841,7 +1023,7 @@ class Game {
         this.ctx.lineTo(enemy.x + 16, enemy.y + 8);
         this.ctx.closePath();
         this.ctx.fill();
-
+        
         // 护目镜
         this.ctx.fillStyle = '#2A2A2A';
         this.ctx.fillRect(enemy.x + 17, enemy.y + 8, 10, 4);
@@ -1022,11 +1204,105 @@ class Game {
         this.ctx.textAlign = 'start';
         this.ctx.textBaseline = 'alphabetic';
     }
+
+    // 添加偏转音效生成器
+    createDeflectSound() {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // 设置音量包络
+        gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+        
+        // 设置频率包络 - 高音调表示偏转
+        oscillator.frequency.setValueAtTime(1200, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.1);
+        
+        oscillator.type = 'sine';
+        oscillator.start();
+        oscillator.stop(this.audioContext.currentTime + 0.1);
+    }
+
+    // 添加敌人移动和行为更新方法
+    updateEnemies() {
+        this.obstacles.forEach(enemy => {
+            // 确保敌人有移动相关属性
+            if (!enemy.moveTimer) enemy.moveTimer = 0;
+            if (!enemy.moveInterval) enemy.moveInterval = 100 + Math.random() * 200;
+            if (!enemy.direction) enemy.direction = Math.random() * Math.PI * 2;
+            if (!enemy.speed) enemy.speed = 0.5 + Math.random() * 0.5;
+            
+            // 更新移动计时器
+            enemy.moveTimer++;
+            
+            // 随机改变方向
+            if (enemy.moveTimer >= enemy.moveInterval) {
+                enemy.moveTimer = 0;
+                enemy.moveInterval = 100 + Math.random() * 200;
+                enemy.direction = Math.random() * Math.PI * 2;
+            }
+            
+            // 移动敌人
+            const newX = enemy.x + Math.cos(enemy.direction) * enemy.speed;
+            const newY = enemy.y + Math.sin(enemy.direction) * enemy.speed;
+            
+            // 检查是否会超出边界
+            if (newX > 0 && newX < this.canvas.width - enemy.width &&
+                newY > 0 && newY < this.canvas.height - enemy.height) {
+                enemy.x = newX;
+                enemy.y = newY;
+            } else {
+                // 如果会超出边界，改变方向
+                enemy.direction = Math.random() * Math.PI * 2;
+            }
+            
+            // 检查与其他敌人的碰撞
+            this.obstacles.forEach(otherEnemy => {
+                if (enemy !== otherEnemy) {
+                    if (this.checkEnemyCollision(enemy, otherEnemy)) {
+                        // 如果发生碰撞，稍微调整位置
+                        enemy.x -= Math.cos(enemy.direction) * enemy.speed * 1.5;
+                        enemy.y -= Math.sin(enemy.direction) * enemy.speed * 1.5;
+                        
+                        // 改变方向
+                        enemy.direction += Math.PI + (Math.random() - 0.5) * Math.PI / 2;
+                    }
+                }
+            });
+        });
+    }
+    
+    // 检查两个敌人之间是否发生碰撞
+    checkEnemyCollision(enemy1, enemy2) {
+        return enemy1.x < enemy2.x + enemy2.width &&
+               enemy1.x + enemy1.width > enemy2.x &&
+               enemy1.y < enemy2.y + enemy2.height &&
+               enemy1.y + enemy1.height > enemy2.y;
+    }
 }
 
 // 创建游戏实例
 window.onload = () => {
     const game = new Game();
+    
+    // 确保键盘事件能够正确捕获
+    window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+            e.preventDefault(); // 防止默认行为（如页面滚动）
+            game.keys[e.code] = true;
+            if (e.code === 'Space') game.fire();
+        }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+            e.preventDefault();
+            game.keys[e.code] = false;
+        }
+    });
 };
 
 // 修改障碍物的外观为敌方坦克
@@ -1053,19 +1329,190 @@ function drawTank(ctx, x, y, angle) {
     ctx.translate(x, y);
     ctx.rotate(angle);
     
-    // 坦克主体
-    ctx.fillStyle = '#006400';  // 恢复为深绿色
-    ctx.fillRect(-20, -15, 40, 30);
+    // 坦克阴影
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 25, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 坦克履带
+    const trackGradient = ctx.createLinearGradient(-22, -15, -22, 15);
+    trackGradient.addColorStop(0, '#1A3A1A');
+    trackGradient.addColorStop(0.5, '#0A1A0A');
+    trackGradient.addColorStop(1, '#1A3A1A');
+    
+    // 左履带
+    ctx.fillStyle = trackGradient;
+    ctx.fillRect(-25, -18, 10, 36);
+    
+    // 右履带
+    ctx.fillRect(15, -18, 10, 36);
+    
+    // 履带细节 - 轮子和链条
+    ctx.fillStyle = '#0A0A0A';
+    // 左履带轮子
+    ctx.beginPath();
+    ctx.arc(-20, -15, 5, 0, Math.PI * 2);
+    ctx.arc(-20, 15, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // 右履带轮子
+    ctx.beginPath();
+    ctx.arc(20, -15, 5, 0, Math.PI * 2);
+    ctx.arc(20, 15, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 履带链条
+    ctx.strokeStyle = '#2A2A2A';
+    ctx.lineWidth = 1;
+    for (let i = -15; i <= 15; i += 5) {
+        // 左履带链条
+        ctx.beginPath();
+        ctx.moveTo(-25, i);
+        ctx.lineTo(-15, i);
+        ctx.stroke();
+        // 右履带链条
+        ctx.beginPath();
+        ctx.moveTo(15, i);
+        ctx.lineTo(25, i);
+        ctx.stroke();
+    }
+    
+    // 坦克底盘
+    const hullGradient = ctx.createLinearGradient(0, -15, 0, 15);
+    hullGradient.addColorStop(0, '#006400');
+    hullGradient.addColorStop(0.5, '#004D00');
+    hullGradient.addColorStop(1, '#003000');
+    ctx.fillStyle = hullGradient;
+    
+    // 底盘主体 - 圆角矩形
+    ctx.beginPath();
+    ctx.roundRect(-20, -15, 40, 30, 5);
+    ctx.fill();
+    
+    // 底盘装甲板纹理
+    ctx.strokeStyle = '#008000';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(-15, -15);
+    ctx.lineTo(-15, 15);
+    ctx.moveTo(-5, -15);
+    ctx.lineTo(-5, 15);
+    ctx.moveTo(5, -15);
+    ctx.lineTo(5, 15);
+    ctx.moveTo(15, -15);
+    ctx.lineTo(15, 15);
+    ctx.stroke();
+    
+    // 底盘装饰 - 铆钉
+    ctx.fillStyle = '#004000';
+    for (let i = -15; i <= 15; i += 10) {
+        for (let j = -10; j <= 10; j += 10) {
+            ctx.beginPath();
+            ctx.arc(j, i, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    // 炮塔底座
+    ctx.fillStyle = '#004D00';
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
     
     // 炮塔
-    ctx.fillStyle = '#32CD32';  // 恢复为亮绿色
+    const turretGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+    turretGradient.addColorStop(0, '#32CD32');
+    turretGradient.addColorStop(0.7, '#228B22');
+    turretGradient.addColorStop(1, '#006400');
+    ctx.fillStyle = turretGradient;
     ctx.beginPath();
     ctx.arc(0, 0, 12, 0, Math.PI * 2);
     ctx.fill();
     
+    // 炮塔细节 - 舱门
+    ctx.strokeStyle = '#004D00';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI);
+    ctx.stroke();
+    
+    // 炮塔舱门把手
+    ctx.fillStyle = '#004D00';
+    ctx.beginPath();
+    ctx.arc(0, 4, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 炮塔装饰 - 天线
+    ctx.strokeStyle = '#1A1A1A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(8, -8);
+    ctx.lineTo(8, -20);
+    ctx.stroke();
+    
+    // 天线顶部小旗
+    ctx.fillStyle = '#FF0000';
+    ctx.beginPath();
+    ctx.moveTo(8, -20);
+    ctx.lineTo(15, -17);
+    ctx.lineTo(8, -14);
+    ctx.closePath();
+    ctx.fill();
+    
+    // 炮管底座
+    ctx.fillStyle = '#004D00';
+    ctx.beginPath();
+    ctx.arc(5, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
     // 炮管
-    ctx.fillStyle = '#006400';  // 恢复为深绿色
-    ctx.fillRect(0, -3, 30, 6);
+    const barrelGradient = ctx.createLinearGradient(0, 0, 30, 0);
+    barrelGradient.addColorStop(0, '#006400');
+    barrelGradient.addColorStop(1, '#004000');
+    ctx.fillStyle = barrelGradient;
+    
+    // 主炮管
+    ctx.beginPath();
+    ctx.roundRect(5, -3, 30, 6, 2);
+    ctx.fill();
+    
+    // 炮管末端
+    ctx.fillStyle = '#003000';
+    ctx.beginPath();
+    ctx.roundRect(35, -3.5, 3, 7, 1);
+    ctx.fill();
+    
+    // 炮管消焰器细节
+    ctx.fillStyle = '#002000';
+    ctx.beginPath();
+    ctx.arc(38, 0, 2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 炮管支架
+    ctx.strokeStyle = '#004D00';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(10, -3);
+    ctx.lineTo(10, -8);
+    ctx.moveTo(20, -3);
+    ctx.lineTo(20, -8);
+    ctx.stroke();
+    
+    // 副武器 - 机枪
+    ctx.fillStyle = '#1A1A1A';
+    ctx.fillRect(-5, -15, 3, 8);
+    
+    // 机枪细节
+    ctx.fillStyle = '#0A0A0A';
+    ctx.beginPath();
+    ctx.arc(-3.5, -15, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 高光效果
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.ellipse(-5, -5, 15, 5, Math.PI / 4, 0, Math.PI * 2);
+    ctx.fill();
     
     ctx.restore();
 } 
